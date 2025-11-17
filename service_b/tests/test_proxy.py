@@ -15,12 +15,13 @@ client = TestClient(app)
 @pytest.fixture
 def mock_get_items():
     """Fixture to mock the get_items function"""
-    with patch("app.client.get_items") as mock:
-        # Create a mock response
-        mock.return_value = AsyncMock(return_value={"items": [
+    async def mock_get_items_impl():
+        return {"items": [
             {"id": 1, "value": "test item 1"},
             {"id": 2, "value": "test item 2"}
-        ]})
+        ]}
+
+    with patch("app.client.get_items", mock_get_items_impl) as mock:
         yield mock
 
 def test_proxy_items(mock_get_items):
@@ -45,8 +46,10 @@ def test_proxy_items(mock_get_items):
 @pytest.fixture
 def mock_get_items_error():
     """Fixture to mock the get_items function with an error"""
-    with patch("app.client.get_items") as mock:
-        mock.return_value = AsyncMock(side_effect=Exception("Service A is down"))
+    async def mock_get_items_error_impl():
+        raise Exception("Service A is down")
+
+    with patch("app.client.get_items", mock_get_items_error_impl) as mock:
         yield mock
 
 def test_proxy_items_error(mock_get_items_error):
