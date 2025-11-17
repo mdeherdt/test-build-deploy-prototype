@@ -1,8 +1,13 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, AsyncMock
+import sys
+import os
 
-from service_b.app.main import app
+# Add the parent directory to sys.path to allow imports from the app package
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from app.main import app
 
 # Create a test client
 client = TestClient(app)
