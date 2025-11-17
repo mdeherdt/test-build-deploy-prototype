@@ -10,17 +10,17 @@ app = FastAPI(title="Service B - Proxy API")
 async def proxy_items():
     """
     Proxy endpoint that gets items from Service A and transforms them
-    
+
     Returns:
         Dict containing a list of transformed items
     """
     try:
         # Get items from Service A
         items_data = await client.get_items()
-        
+
         # Transform the items
-        transformed_data = await client.transform_items(items_data)
-        
+        transformed_data = client.transform_items(items_data)
+
         return transformed_data
     except Exception as e:
         # Handle errors (e.g., Service A is down)
