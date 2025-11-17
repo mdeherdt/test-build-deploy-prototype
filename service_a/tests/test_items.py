@@ -3,10 +3,15 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+import sys
+import os
 
-from service_a.app.main import app
-from service_a.app.db import Base, get_db
-from service_a.app.models import Item
+# Add the parent directory to sys.path to allow imports from the app package
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from app.main import app
+from app.db import Base, get_db
+from app.models import Item
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -22,14 +27,14 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 def test_db():
     # Create the tables
     Base.metadata.create_all(bind=engine)
-    
+
     # Create a session
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
-        
+
     # Drop the tables after the test
     Base.metadata.drop_all(bind=engine)
 
@@ -41,13 +46,13 @@ def client(test_db):
             yield test_db
         finally:
             pass
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     # Create a test client
     with TestClient(app) as c:
         yield c
-    
+
     # Reset the dependency override
     app.dependency_overrides = {}
 
@@ -65,7 +70,7 @@ def test_read_items(client, test_db):
     test_db.add(Item(value="test item 1"))
     test_db.add(Item(value="test item 2"))
     test_db.commit()
-    
+
     response = client.get("/items")
     assert response.status_code == 200
     data = response.json()
@@ -79,7 +84,7 @@ def test_read_item(client, test_db):
     item = Item(value="test item")
     test_db.add(item)
     test_db.commit()
-    
+
     response = client.get(f"/items/{item.id}")
     assert response.status_code == 200
     data = response.json()
@@ -92,10 +97,10 @@ def test_delete_item(client, test_db):
     item = Item(value="test item")
     test_db.add(item)
     test_db.commit()
-    
+
     response = client.delete(f"/items/{item.id}")
     assert response.status_code == 204
-    
+
     # Verify the item was deleted
     response = client.get(f"/items/{item.id}")
     assert response.status_code == 404
