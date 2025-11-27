@@ -1,5 +1,5 @@
 name: CI/CD Pipeline
-
+# <--- CORRECT: Draait op je VM
 on:
   push:
     branches: [ main ]
@@ -7,122 +7,111 @@ on:
     branches: [ main ]
 
 env:
-  # Set your container registry here
   CONTAINER_REGISTRY: ghcr.io/${{ github.repository_owner }}
-  # Set your repository name here
   REPO_NAME: ${{ github.repository }}
 
 jobs:
   test:
     name: Run Tests
-    runs-on: ubuntu-latest
-    
+    runs-on: self-hosted
+
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
-      
+      uses: actions/checkout@v3
+
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
-        
-    - name: Install dependencies for Service A
+        python-version: '3.10'
+
+    - name: Install dependencies and Run Tests Service A
       run: |
         cd service_a
-        python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Run tests for Service A
-      run: |
-        cd service_a
         pytest
-        
-    - name: Install dependencies for Service B
+
+    - name: Install dependencies and Run Tests Service B
       run: |
         cd service_b
-        python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Run tests for Service B
-      run: |
-        cd service_b
         pytest
-  
+
   build-and-push:
     name: Build and Push Docker Images
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
-      
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-      
+      uses: actions/checkout@v3
+
     - name: Login to GitHub Container Registry
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GH_TOKEN }}
-        
-    - name: Extract metadata for Docker
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
       id: meta
-      run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-      
-    - name: Build and push Service A image
-      uses: docker/build-push-action@v2
+      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Build and push Service A
+      uses: docker/build-push-action@v4
       with:
         context: ./service_a
         push: true
         tags: |
           ${{ env.CONTAINER_REGISTRY }}/service-a:${{ steps.meta.outputs.sha_short }}
           ${{ env.CONTAINER_REGISTRY }}/service-a:latest
-        
-    - name: Build and push Service B image
-      uses: docker/build-push-action@v2
+
+    - name: Build and push Service B
+      uses: docker/build-push-action@v4
       with:
         context: ./service_b
         push: true
         tags: |
           ${{ env.CONTAINER_REGISTRY }}/service-b:${{ steps.meta.outputs.sha_short }}
           ${{ env.CONTAINER_REGISTRY }}/service-b:latest
-  
+
   deploy:
     name: Deploy to Kubernetes
     needs: build-and-push
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
-      
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v1
-      
+      uses: actions/checkout@v3
+
+
     - name: Configure kubectl
-      # You need to create a secret named KUBE_CONFIG with your kubeconfig file content
+      env:
+        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
       run: |
-        mkdir -p ~/.kube
-        echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
-        chmod 600 ~/.kube/config
-        
-    - name: Extract metadata for Docker
+        mkdir -p $HOME/.kube 
+        echo "$KUBE_CONFIG" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+
+    - name: Extract metadata
       id: meta
-      run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-      
+      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
     - name: Update Kubernetes manifests
       run: |
-        # Replace placeholders in Kubernetes manifests
-        find k8s -type f -name "*.yaml" -exec sed -i "s|\${CONTAINER_REGISTRY}|${{ env.CONTAINER_REGISTRY }}|g" {} \;
-        find k8s -type f -name "*.yaml" -exec sed -i "s|\${IMAGE_TAG}|${{ steps.meta.outputs.sha_short }}|g" {} \;
+        IMAGE_BASE="ghcr.io/$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')"
         
+        find k8s -type f -name "*.yaml" -exec sed -i "s|\${CONTAINER_REGISTRY}|$IMAGE_BASE|g" {} \;
+        find k8s -type f -name "*.yaml" -exec sed -i "s|\${IMAGE_TAG}|${{ steps.meta.outputs.sha_short }}|g" {} \;
+
     - name: Deploy to Kubernetes
       run: |
         kubectl apply -f k8s/
+        
+
+        kubectl rollout restart deployment/service-a
+        kubectl rollout restart deployment/service-b
         
     - name: Verify deployment
       run: |
