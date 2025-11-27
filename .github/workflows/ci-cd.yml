@@ -1,13 +1,14 @@
 name: CI/CD Pipeline
+
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
-  permissions:
-    contents: read
-    packages: write
+permissions:
+  contents: read
+  packages: write
 
 env:
   CONTAINER_REGISTRY: ghcr.io/${{ github.repository_owner }}
@@ -91,7 +92,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-
     - name: Configure kubectl
       env:
         KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
@@ -115,7 +115,6 @@ jobs:
       run: |
         kubectl apply -f k8s/
         
-
         kubectl rollout restart deployment/service-a
         kubectl rollout restart deployment/service-b
         
