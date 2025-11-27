@@ -25,6 +25,18 @@ def read_items(skip: int = 0, limit: int = 100, db_session: Session = Depends(db
     items = db_session.query(models.Item).offset(skip).limit(limit).all()
     return {"items": items}
 
+@app.get("/items/count", response_model=int)
+def count_items(db_session: Session = Depends(db.get_db)):
+    """Count all items in the database"""
+    count = db_session.query(models.Item).count()
+    return count
+
+@app.get("/items/search", response_model=schemas.ItemList)
+def search_items(q: str, db_session: Session = Depends(db.get_db)):
+    """Search items by value"""
+    items = db_session.query(models.Item).filter(models.Item.value.contains(q)).all()
+    return {"items": items}
+
 @app.get("/items/{item_id}", response_model=schemas.Item)
 def read_item(item_id: int, db_session: Session = Depends(db.get_db)):
     """Get a specific item by ID"""
@@ -42,6 +54,18 @@ def delete_item(item_id: int, db_session: Session = Depends(db.get_db)):
     db_session.delete(item)
     db_session.commit()
     return None
+
+@app.put("/items/{item_id}", response_model=schemas.Item)
+def update_item(item_id: int, item: schemas.ItemCreate, db_session: Session = Depends(db.get_db)):
+    """Update an item by ID"""
+    db_item = db_session.query(models.Item).filter(models.Item.id == item_id).first()
+    if db_item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    db_item.value = item.value
+    db_session.commit()
+    db_session.refresh(db_item)
+    return db_item
+
 
 @app.get("/health")
 def health_check():

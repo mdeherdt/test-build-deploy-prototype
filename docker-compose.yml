@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  service-a:
+    build:
+      context: ./service_a
+    ports:
+      - "8000:8000"
+    volumes:
+      - service_a_data:/tmp/data
+    environment:
+      - DATABASE_URL=sqlite:////tmp/data/items.db
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  service-b:
+    build:
+      context: ./service_b
+    ports:
+      - "8001:8001"
+    environment:
+      - SERVICE_A_BASE_URL=http://service-a:8000
+    depends_on:
+      service-a:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  service_a_data:

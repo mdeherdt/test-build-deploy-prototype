@@ -126,6 +126,39 @@ docker run -d --name service-a --network microservices -p 8000:8000 service-a:la
 docker run -d --name service-b --network microservices -p 8001:8001 -e SERVICE_A_BASE_URL=http://service-a:8000 service-b:latest
 ```
 
+## Running with Docker Compose
+
+Docker Compose provides an easier way to run both services together with a single command.
+
+### Prerequisites
+
+- Docker
+- Docker Compose
+
+### Running the Services
+
+```bash
+# Start both services
+docker-compose up -d
+
+# Check the status of the services
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Stop the services
+docker-compose down
+```
+
+The services will be available at:
+- Service A: http://localhost:8000 (Swagger UI: http://localhost:8000/docs)
+- Service B: http://localhost:8001 (Swagger UI: http://localhost:8001/docs)
+
+### Persistent Data
+
+The SQLite database for Service A is stored in a Docker volume named `service_a_data`, ensuring that your data persists even when containers are stopped or removed.
+
 ## Running Tests
 
 ### Service A

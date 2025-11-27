@@ -105,6 +105,63 @@ def test_delete_item(client, test_db):
     response = client.get(f"/items/{item.id}")
     assert response.status_code == 404
 
+def test_update_item(client, test_db):
+    """Test updating an item"""
+    # Add a test item
+    item = Item(value="test item")
+    test_db.add(item)
+    test_db.commit()
+
+    # Update the item
+    response = client.put(f"/items/{item.id}", json={"value": "updated item"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["value"] == "updated item"
+    assert data["id"] == item.id
+
+    # Verify the item was updated in the database
+    response = client.get(f"/items/{item.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["value"] == "updated item"
+
+def test_search_items(client, test_db):
+    """Test searching items"""
+    # Add some test items
+    test_db.add(Item(value="apple"))
+    test_db.add(Item(value="banana"))
+    test_db.add(Item(value="orange"))
+    test_db.commit()
+
+    # Search for items containing "an"
+    response = client.get("/items/search?q=an")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) == 2
+    assert any(item["value"] == "banana" for item in data["items"])
+    assert any(item["value"] == "orange" for item in data["items"])
+
+    # Search for items containing "app"
+    response = client.get("/items/search?q=app")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) == 1
+    assert data["items"][0]["value"] == "apple"
+
+def test_count_items(client, test_db):
+    """Test counting items"""
+    # Add some test items
+    test_db.add(Item(value="item 1"))
+    test_db.add(Item(value="item 2"))
+    test_db.add(Item(value="item 3"))
+    test_db.commit()
+
+    # Count the items
+    response = client.get("/items/count")
+    assert response.status_code == 200
+    count = response.json()
+    assert count == 3
+
 def test_health_check(client):
     """Test health check endpoint"""
     response = client.get("/health")

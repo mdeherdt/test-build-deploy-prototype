@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
 class ItemBase(BaseModel):
@@ -13,9 +13,7 @@ class Item(ItemBase):
     """Pydantic model for returning an Item"""
     id: int
 
-    class Config:
-        """Configuration for Pydantic model"""
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ItemList(BaseModel):
     """Pydantic model for returning a list of Items"""

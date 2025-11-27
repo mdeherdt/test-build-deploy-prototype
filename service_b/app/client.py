@@ -17,6 +17,48 @@ async def get_items() -> Dict[str, List[Dict[str, Any]]]:
         response.raise_for_status()  # Raise exception for 4XX/5XX responses
         return response.json()
 
+async def get_item(item_id: int) -> Dict[str, Any]:
+    """
+    Get a specific item from Service A
+
+    Args:
+        item_id: ID of the item to get
+
+    Returns:
+        Dict containing the item data
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{SERVICE_A_BASE_URL}/items/{item_id}")
+        response.raise_for_status()  # Raise exception for 4XX/5XX responses
+        return response.json()
+
+async def search_items(query: str) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Search items from Service A
+
+    Args:
+        query: Search query
+
+    Returns:
+        Dict containing a list of matching items
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{SERVICE_A_BASE_URL}/items/search?q={query}")
+        response.raise_for_status()  # Raise exception for 4XX/5XX responses
+        return response.json()
+
+async def count_items() -> int:
+    """
+    Count items from Service A
+
+    Returns:
+        Number of items
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{SERVICE_A_BASE_URL}/items/count")
+        response.raise_for_status()  # Raise exception for 4XX/5XX responses
+        return response.json()
+
 def transform_items(items_data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, List[Dict[str, Any]]]:
     """
     Transform items data from Service A
