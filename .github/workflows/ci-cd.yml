@@ -1,5 +1,4 @@
 name: CI/CD Pipeline
-# <--- CORRECT: Draait op je VM
 on:
   push:
     branches: [ main ]
